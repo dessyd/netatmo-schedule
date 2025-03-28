@@ -1,0 +1,1 @@
+*/5 * * * * cd /app && /usr/local/bin/python -m netatmo_otel.main >> /var/log/netatmo.log 2>&1

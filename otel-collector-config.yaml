@@ -1,0 +1,54 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+  
+  # InfluxDB receiver for line protocol metrics
+  influxdb:
+    endpoint: 0.0.0.0:8186
+
+  # StatsD receiver for Prometheus metrics
+  statsd:
+    endpoint: 0.0.0.0:8125
+
+processors:
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
+
+exporters:
+  # Export to Splunk HEC
+  splunk_hec:
+    token: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    endpoint: "http://splunk:8088/services/collector"
+    source: "otel-collector"
+    sourcetype: "otel-metrics"
+    index: "metrics"
+    tls:
+      insecure: true  # Set to false for production
+  
+  # File exporter for JSON output (for debugging)
+  # file:
+  #   path: /etc/otel-collector/data/netatmo_metrics.json
+  #   rotation:
+  #     max_megabytes: 10
+  #     max_days: 3
+  #     max_backups: 5
+  
+  # Debug exporter
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp, influxdb, statsd]
+      processors: [batch]
+      exporters: [splunk_hec, debug]
+
+  telemetry:
+    logs:
+      level: info

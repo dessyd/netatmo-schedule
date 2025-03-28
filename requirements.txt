@@ -1,0 +1,5 @@
+opentelemetry-api
+opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-sdk
+python-dotenv
+requests

@@ -1,0 +1,78 @@
+services:
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    platform: linux/amd64
+    container_name: otel-collector
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+      - ./otel-data:/etc/otel-collector/data
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8125:8125/udp" # StatsD
+      - "8186:8186"   # InfluxDB
+      - "8888:8888"   # Metrics exposition
+      - "8889:8889"   # Prometheus exporter
+    # depends_on:
+    #   splunk:
+    #     condition: service_healthy
+    networks:
+      - monitoring-network
+
+  # Splunk instance
+  splunk:
+    image: splunk/splunk:latest
+    platform: linux/amd64
+    container_name: splunk
+    hostname: splunk
+    environment:
+      - SPLUNK_START_ARGS=--accept-license
+      - SPLUNK_PASSWORD=ChangeMe123!
+      - SPLUNK_HEC_TOKEN=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+      - SPLUNK_HEC_SSL=false
+    ports:
+      - "8000:8000"   # Splunk Web UI
+      - "8088:8088"   # HEC
+      - "8089:8089"   # Splunk API
+    volumes:
+      - splunk-data:/opt/splunk/var
+      - splunk-etc:/opt/splunk/etc      
+      - ./default.yml:/tmp/defaults/default.yml  # Mount the default config
+
+    networks:
+      - monitoring-network
+
+  # Netatmo Weather Monitor
+  netatmo-client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    container_name: netatmo-client
+    volumes:
+      - ./.env:/app/.env
+      - ./netatmo_config.ini:/app/netatmo_config.ini
+      - ./data:/app/data
+    environment:
+      - NETATMO_CONFIG_FILE=/app/netatmo_config.ini
+      - STATE_FILE=/app/data/netatmo_state.json
+    depends_on:
+      otel-collector:
+        condition: service_started
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+
+networks:
+  monitoring-network:
+    driver: bridge
+
+volumes:
+  splunk-data:
+    driver: local
+  splunk-etc:
+    driver: local
